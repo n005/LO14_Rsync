@@ -77,7 +77,7 @@ function main() {
             echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
 
             # Copy the file to $2
-            cp $file $2$file_path
+            install -D -m $file_permissions $file $2$file_path
         fi
     done
 
@@ -103,12 +103,12 @@ function main() {
             echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
 
             # Copy the file to $1
-            cp $file $1$file_path
+            install -D -m $file_permissions $file $1$file_path
         fi
     done
 
     # Run sync function
-    #sync $1 $2
+    sync $1 $2
 
 }
 
@@ -167,6 +167,9 @@ function sync() {
         # Get the hash of the file
         file_hash=$(sha256sum $file | cut -d ' ' -f 1)
 
+        # Check the hash of $2 file
+        file2_hash=$(sha256sum $2$file_path | cut -d ' ' -f 1)
+
         # Check if the file is already in the sync log
         if [[ -n "$(grep -E "^$file_path " $sync_log)" ]]; then
             # Get the size of the file in the sync log
@@ -180,9 +183,6 @@ function sync() {
 
             # Get the hash of the file in the sync log
             sync_log_file_hash=$(grep -E "^$file_path " $sync_log | cut -d ' ' -f 7)
-
-            # Check the hash of $2 file
-            file2_hash=$(sha256sum $2$file_path | cut -d ' ' -f 1)
 
             # If the file in $1 is not the same in the sync log but $2 file is the same in the log sync
             # copy $1 file to $2, add replace sync log line by the new one
@@ -207,7 +207,6 @@ function sync() {
             # If neither $1 nor $2 files are the same in the sync log but they are not the same in $1 and $2
             # print conflict
             if [[ $file_hash != $sync_log_file_hash && $file2_hash != $sync_log_file_hash && $file_hash != $file2_hash ]]; then
-                echo $file_hash $sync_log_file_hash $file2_hash
                 echo "Conflict: $file_path is different in $1 and $2"
             fi
         fi
@@ -243,6 +242,9 @@ function sync() {
         # Get the hash of the file
         file_hash=$(sha256sum $file | cut -d ' ' -f 1)
 
+        # Check the hash of $1 file
+        file2_hash=$(sha256sum $1$file_path | cut -d ' ' -f 1)
+
         # Check if the file is already in the sync log
         if [[ -n "$(grep -E "^$file_path " $sync_log)" ]]; then
             # Get the size of the file in the sync log
@@ -256,9 +258,6 @@ function sync() {
 
             # Get the hash of the file in the sync log
             sync_log_file_hash=$(grep -E "^$file_path " $sync_log | cut -d ' ' -f 7)
-
-            # Check the hash of $1 file
-            file2_hash=$(sha256sum $1$file_path | cut -d ' ' -f 1)
 
             # If the file in $2 is not the same in the sync log but $1 file is the same in the log sync
             # copy $2 file to $1, add replace sync log line by the new one
@@ -310,12 +309,12 @@ function cleanup() {
 
         # remove entry in the sync log if the file doesn't exist in $1 and $2
         if [[ ! -f "$1$file_path" && ! -f "$2$file_path2" ]]; then
-            awk '!/^$file_path/' $sync_log > $sync_log
+            awk -v file_path="$file_path" '{ if ($0 !~ "^"file_path) { print } }' $sync_log > temp && mv temp $sync_log
         fi
     done < $sync_log
 
     # Delete duplicate entries in the sync log (keep the recent one)
-    awk '!seen[$1]++' $sync_log > temp && mv temp $sync_log
+    #awk '!seen[$1]++' $sync_log > temp && mv temp $sync_log
 }
 
 # Call main function
