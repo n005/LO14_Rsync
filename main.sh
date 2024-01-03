@@ -1,26 +1,4 @@
-#!/bin/zsh
-
-# Crée une syncronisation entre deux dossiers $A et $B en n'utilisant pas rsync
-# mais en utilisant cp et rm. Le script doit être appelé avec deux arguments
-# $A et $B qui sont les deux dossiers à synchroniser. Le script doit
-# synchroniser les deux dossiers de la manière suivante :
-# - Si un fichier est présent dans $A mais pas dans $B, alors le fichier est
-#   copié de $A vers $B.
-# - Si un fichier est présent dans $B mais pas dans $A, alors le fichier est
-#   supprimé de $B.
-# - Si un fichier est présent dans $A et dans $B, alors le fichier est copié
-#   de $A vers $B si la date de dernière modification de $A est plus récente
-#   que celle de $B. Sinon, le fichier est supprimé de $B.
-# Il y a utilisation d'un journal de synchronisation qui est un fichier
-# .sync.log qui contient la liste des fichiers p, le type et les permissions 
-# du fichier p, la taille de p ainsi que la date de dernière modification de p.
-# Ce fichier est créé s'il n'existe pas. 
-# Si le fichier existe, alors le script doit lire son contenu et ne pas copier les
-# fichiers qui sont déjà présents dans le journal. Le script doit ensuite
-# ajouter à la fin du fichier les fichiers copiés et supprimés lors de la
-# synchronisation.
-
-# Main:
+#!/bin/bash
 
 function main() {
     # Check if the number of arguments is correct
@@ -69,60 +47,71 @@ function main() {
     if [[ ! -f $sync_log ]]; then
         touch $sync_log
     fi
+    
+    # Make write and read the two directories (and their subdirectories and files) for the current prosess
+    # chmod -R 600 $1
+    # chmod -R 600 $2
 
-    # Read the synchronization log file
-    while IFS= read -r line; do
-        # Extract the file path from the log entry
-        file=$(echo $line | awk '{print $1}')
+    # Create entry in the sync log for each file in $1 if not exist in $2 (and vice versa)
+    # with size of the file, permissions, path, date of last modification, and hash
 
-        # Check if the file exists in both directories
-        if [[ -f $1/$file && -f $2/$file ]]; then
-            # Get the modification dates of the files
-            date1=$(stat -c %Y $1/$file)
-            date2=$(stat -c %Y $2/$file)
+    for file in $(find $1 -type f); do
+        # Get the path of the file relative to $1
+        file_path=${file#$1}
 
-            # Compare the modification dates
-            if [[ $date1 -gt $date2 ]]; then
-                # Copy the file from $1 to $2
-                cp $1/$file $2/$file
-                echo "Copied $file from $1 to $2"
-            elif [[ $date1 -lt $date2 ]]; then
-                # Remove the file from $2
-                rm $2/$file
-                echo "Removed $file from $2"
-            fi
-        fi
-    done < $sync_log
+        # Check if the file is already in the sync log or in $2
+        if [[ -z "$(grep -E "^$file_path" $sync_log)" || ! -f "$2$file_path" ]]; then
+            # Get the size of the file
+            file_size=$(stat -c %s $file)
 
-    # Synchronize the directories
-    for file in $1/*; do
-        # Extract the file name from the path
-        filename=$(basename $file)
+            # Get the permissions of the file
+            file_permissions=$(stat -c %a $file)
 
-        # Check if the file exists in $2
-        if [[ ! -f $2/$filename ]]; then
-            # Copy the file from $1 to $2
-            cp $file $2/$filename
-            echo "Copied $filename from $1 to $2"
-            echo "$filename" >> $sync_log
+            # Get the date of last modification of the file
+            file_date=$(stat -c %y $file)
+
+            # Get the hash of the file
+            file_hash=$(sha256sum $file | cut -d ' ' -f 1)
+
+            # Add the entry to the sync log
+            echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
+
+            # Copy the file to $2
+            cp $file $2$file_path
         fi
     done
 
-    for file in $2/*; do
-        # Extract the file name from the path
-        filename=$(basename $file)
+    # Same for $2
+    for file in $(find $2 -type f); do
+        # Get the path of the file relative to $2
+        file_path=${file#$2}
 
-        # Check if the file exists in $1
-        if [[ ! -f $1/$filename ]]; then
-            # Remove the file from $2
-            rm $file
-            echo "Removed $filename from $2"
-            echo "$filename" >> $sync_log
+        # Check if the file is already in the sync log or in $1
+        if [[ -z "$(grep -E "^$file_path" $sync_log)" || ! -f "$1$file_path" ]]; then
+            # Get the size of the file
+            file_size=$(stat -c %s $file)
+
+            # Get the permissions of the file
+            file_permissions=$(stat -c %a $file)
+
+            # Get the date of last modification of the file
+            file_date=$(stat -c %y $file)
+
+            # Get the hash of the file
+            file_hash=$(sha256sum $file | cut -d ' ' -f 1)
+
+            # Add the entry to the sync log
+            echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
+
+            # Copy the file to $1
+            cp $file $1$file_path
         fi
     done
+
+    # Run sync function
+    sync $1 $2
+
 }
-
-# Crée une fonction qui affiche les différences entre deux fichiers texte, avec un + devant les lignes ajoutées et un - devant les lignes supprimées.
 
 function diff() {
     # Check if the number of arguments is correct
@@ -152,4 +141,134 @@ function diff() {
     diff -u $1 $2 | grep -E '^\+|^-'
 }
 
+# Sync function
+function sync() {
+    #For loop for $1
+    for file in $(find $1 -type f); do
+        # Get the path of the file relative to $1
+        file_path=${file#$1}
+        
+        # Get the path of the file relative to $2
+        file_path2=${file#$2}
 
+        # Check if the file is not a folder in $2 and print conflict
+        if [[ -d "$2$file_path" ]]; then
+            echo "Conflict: $file_path is a file in $1 and a folder in $2"
+        fi
+
+        # Get the size of the file
+        file_size=$(stat -c %s $file)
+
+        # Get the permissions of the file
+        file_permissions=$(stat -c %a $file)
+
+        # Get the date of last modification of the file
+        file_date=$(stat -c %y $file)
+
+        # Get the hash of the file
+        file_hash=$(sha256sum $file | cut -d ' ' -f 1)
+
+        # Check if the file is already in the sync log
+        if [[ -n "$(grep -E "^$file_path" $sync_log)" ]]; then
+            # Get the size of the file in the sync log
+            sync_log_file_size=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 2)
+
+            # Get the permissions of the file in the sync log
+            sync_log_file_permissions=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 3)
+
+            # Get the date of last modification of the file in the sync log
+            sync_log_file_date=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 4)
+
+            # Get the hash of the file in the sync log
+            sync_log_file_hash=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 5)
+
+            # Check the hash of $2 file
+            file2_hash=$(sha256sum $2$file_path | cut -d ' ' -f 1)
+
+            # If the file in $1 is not the same in the sync log but $2 file is the same in the log sync
+            # copy $1 file to $2, add replace sync log line by the new one
+            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
+                cp $file $2$file_path
+                sed -i "s/^$file_path $sync_log_file_size $sync_log_file_permissions $sync_log_file_date $sync_log_file_hash/$file_path $file_size $file_permissions $file_date $file_hash/" $sync_log
+            fi
+
+            # If neither $1 nor $2 files are the same in the sync log but they are the same in $1 and $2
+            # add replace sync log line by the new one
+            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
+                sed -i "s/^$file_path $sync_log_file_size $sync_log_file_permissions $sync_log_file_date $sync_log_file_hash/$file_path $file_size $file_permissions $file_date $file_hash/" $sync_log
+            fi
+
+            # If neither $1 nor $2 files are the same in the sync log but they are not the same in $1 and $2
+            # print conflict
+            if [[ $file_hash != $sync_log_file_hash && $file_hash != $file2_hash ]]; then
+                echo "Conflict: $file_path is different in $1 and $2"
+            fi
+        fi
+    done
+
+    # Same for $2
+    for file in $(find $2 -type f); do
+        # Get the path of the file relative to $2
+        file_path=${file#$2}
+
+        # Get the path of the file relative to $1
+        file_path2=${file#$1}
+
+        # Check if the file is not a folder in $1 and print conflict
+        if [[ -d "$1$file_path" ]]; then
+            echo "Conflict: $file_path is a file in $2 and a folder in $1"
+        fi
+
+        # Get the size of the file
+        file_size=$(stat -c %s $file)
+
+        # Get the permissions of the file
+        file_permissions=$(stat -c %a $file)
+
+        # Get the date of last modification of the file
+        file_date=$(stat -c %y $file)
+
+        # Get the hash of the file
+        file_hash=$(sha256sum $file | cut -d ' ' -f 1)
+
+        # Check if the file is already in the sync log
+        if [[ -n "$(grep -E "^$file_path" $sync_log)" ]]; then
+            # Get the size of the file in the sync log
+            sync_log_file_size=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 2)
+
+            # Get the permissions of the file in the sync log
+            sync_log_file_permissions=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 3)
+
+            # Get the date of last modification of the file in the sync log
+            sync_log_file_date=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 4)
+
+            # Get the hash of the file in the sync log
+            sync_log_file_hash=$(grep -E "^$file_path" $sync_log | cut -d ' ' -f 5)
+
+            # Check the hash of $1 file
+            file2_hash=$(sha256sum $1$file_path | cut -d ' ' -f 1)
+
+            # If the file in $2 is not the same in the sync log but $1 file is the same in the log sync
+            # copy $2 file to $1, add replace sync log line by the new one
+            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
+                cp $file $1$file_path
+                sed -i "s/^$file_path $sync_log_file_size $sync_log_file_permissions $sync_log_file_date $sync_log_file_hash/$file_path $file_size $file_permissions $file_date $file_hash/" $sync_log
+            fi
+
+            # If neither $1 nor $2 files are the same in the sync log but they are the same in $1 and $2
+            # add replace sync log line by the new one
+            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
+                sed -i "s/^$file_path $sync_log_file_size $sync_log_file_permissions $sync_log_file_date $sync_log_file_hash/$file_path $file_size $file_permissions $file_date $file_hash/" $sync_log
+            fi
+
+            # If neither $1 nor $2 files are the same in the sync log but they are not the same in $1 and $2
+            # print conflict
+            if [[ $file_hash != $sync_log_file_hash && $file_hash != $file2_hash ]]; then
+                echo "Conflict: $file_path is different in $1 and $2"
+            fi
+        fi
+    done
+}
+
+# Call main function
+main $1 $2
