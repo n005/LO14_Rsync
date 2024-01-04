@@ -47,6 +47,12 @@ function main() {
     if [[ ! -f $sync_log ]]; then
         touch $sync_log
     fi
+
+    # Create the log file move file if it doesn't exist
+    log_move=".log_move"
+    if [[ ! -f $log_move ]]; then
+        touch $log_move
+    fi
     
     # Make write and read the two directories (and their subdirectories and files) for the current prosess
     # chmod -R 600 $1
@@ -78,6 +84,10 @@ function main() {
 
             # Copy the file to $2
             install -D -m $file_permissions $file $2$file_path
+
+            # Add the entry to the log_move
+            current_date=$(date +"%Y-%m-%d %H:%M:%S")
+            echo "$current_date copy $file to $2$file_path" >> $log_move
         fi
     done
 
@@ -104,6 +114,10 @@ function main() {
 
             # Copy the file to $1
             install -D -m $file_permissions $file $1$file_path
+
+            # Add the entry to the log_move
+            current_date=$(date +"%Y-%m-%d %H:%M:%S")
+            echo "$current_date copy $file to $1$file_path" >> $log_move
         fi
     done
 
@@ -187,7 +201,10 @@ function sync() {
             # If the file in $1 is not the same in the sync log but $2 file is the same in the log sync
             # copy $1 file to $2, add replace sync log line by the new one
             if [[ $file_hash != $sync_log_file_hash && $sync_log_file_hash == $file2_hash ]]; then
-                cp $file $2$file_path
+                install -D -m $file_permissions $file $2$file_path
+                # Add the entry to the log_move
+                current_date=$(date +"%Y-%m-%d %H:%M:%S")
+                echo "$current_date copy $file to $2$file_path" >> $log_move
                 awk -v file_path="$file_path" -v sync_log_file_size="$sync_log_file_size" -v sync_log_file_permissions="$sync_log_file_permissions" -v sync_log_file_date="$sync_log_file_date" -v sync_log_file_hash="$sync_log_file_hash" -v file_size="$file_size" -v file_permissions="$file_permissions" -v file_date="$file_date" -v file_hash="$file_hash" '{ if ($0 ~ "^"file_path) { $0 = file_path " " file_size " " file_permissions " " file_date " " file_hash } print }' $sync_log > temp && mv temp $sync_log
             fi
 
@@ -195,6 +212,9 @@ function sync() {
             # remove the file from $1, remove the entry from the sync log
             if [[ $file_hash == $sync_log_file_hash && ! -f "$2$file_path" ]]; then
                 rm $file
+                # Add the entry to the log_move
+                current_date=$(date +"%Y-%m-%d %H:%M:%S")
+                echo "$current_date remove $file" >> $log_move
                 awk '!/^$file_path/' $sync_log > $sync_log
             fi
 
@@ -262,7 +282,10 @@ function sync() {
             # If the file in $2 is not the same in the sync log but $1 file is the same in the log sync
             # copy $2 file to $1, add replace sync log line by the new one
             if [[ $file_hash != $sync_log_file_hash && $sync_log_file_hash == $file2_hash ]]; then
-                cp $file $1$file_path
+                install -D -m $file_permissions $file $1$file_path
+                # Add the entry to the log_move
+                current_date=$(date +"%Y-%m-%d %H:%M:%S")
+                echo "$current_date copy $file to $1$file_path" >> $log_move
                 awk -v file_path="$file_path" -v sync_log_file_size="$sync_log_file_size" -v sync_log_file_permissions="$sync_log_file_permissions" -v sync_log_file_date="$sync_log_file_date" -v sync_log_file_hash="$sync_log_file_hash" -v file_size="$file_size" -v file_permissions="$file_permissions" -v file_date="$file_date" -v file_hash="$file_hash" '{ if ($0 ~ "^"file_path) { $0 = file_path " " file_size " " file_permissions " " file_date " " file_hash } print }' $sync_log > temp && mv temp $sync_log
             fi
 
@@ -270,6 +293,9 @@ function sync() {
             # remove the file from $2, remove the entry from the sync log
             if [[ $file_hash == $sync_log_file_hash && ! -f "$1$file_path" ]]; then
                 rm $file
+                # Add the entry to the log_move
+                current_date=$(date +"%Y-%m-%d %H:%M:%S")
+                echo "$current_date remove $file" >> $log_move
                 awk -v file_path="$file_path" '{ if ($0 !~ "^"file_path) { print } }' $sync_log > temp && mv temp $sync_log
             fi
 
