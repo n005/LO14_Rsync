@@ -126,7 +126,7 @@ function main() {
 
 }
 
-function diff() {
+function difference() {
     # Check if the number of arguments is correct
     if [[ $# -ne 2 ]]; then
         echo "Usage: $0 <file1> <file2>"
@@ -151,7 +151,27 @@ function diff() {
         exit 1
     fi
 
-    diff -u $1 $2 | grep -E '^\+|^-'
+    diff -u $1 $2
+
+    # Ask which file to keep and check if the answer is correct
+    echo "Answer 1 or 2"
+    read -p "Which file do you want to keep? " answer
+    while [[ $answer != "1" && $answer != "2" ]]; do
+        read -p "Which file do you want to keep? " answer
+    done
+
+    current_date=$(date +"%Y-%m-%d %H:%M:%S")
+    # Overwrite the file with the file to keep
+    if [[ $answer == "1" ]]; then
+        install -D -m $(stat -c %a $1) $1 $2
+        # Add the entry to the log_move
+        echo "$current_date copy $1 to $2" >> $log_move
+    else
+        install -D -m $(stat -c %a $2) $2 $1
+        # Add the entry to the log_move
+        echo "$current_date copy $2 to $1" >> $log_move
+    fi
+
 }
 
 # Sync function
@@ -218,16 +238,18 @@ function sync() {
                 awk '!/^$file_path/' $sync_log > $sync_log
             fi
 
-            # If neither $1 nor $2 files are the same in the sync log but they are the same in $1 and $2
-            # add replace sync log line by the new one
-            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
-                awk -v file_path="$file_path" -v sync_log_file_size="$sync_log_file_size" -v sync_log_file_permissions="$sync_log_file_permissions" -v sync_log_file_date="$sync_log_file_date" -v sync_log_file_hash="$sync_log_file_hash" -v file_size="$file_size" -v file_permissions="$file_permissions" -v file_date="$file_date" -v file_hash="$file_hash" '{ if ($0 ~ "^"file_path) { $0 = file_path " " file_size " " file_permissions " " file_date " " file_hash } print }' $sync_log > temp && mv temp $sync_log
-            fi
-
             # If neither $1 nor $2 files are the same in the sync log but they are not the same in $1 and $2
             # print conflict
             if [[ $file_hash != $sync_log_file_hash && $file2_hash != $sync_log_file_hash && $file_hash != $file2_hash ]]; then
                 echo "Conflict: $file_path is different in $1 and $2"
+                # Summon diff
+                difference $1$file_path $2$file_path
+            fi
+
+            # If neither $1 nor $2 files are the same in the sync log but they are the same in $1 and $2
+            # add replace sync log line by the new one
+            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
+                awk -v file_path="$file_path" -v sync_log_file_size="$sync_log_file_size" -v sync_log_file_permissions="$sync_log_file_permissions" -v sync_log_file_date="$sync_log_file_date" -v sync_log_file_hash="$sync_log_file_hash" -v file_size="$file_size" -v file_permissions="$file_permissions" -v file_date="$file_date" -v file_hash="$file_hash" '{ if ($0 ~ "^"file_path) { $0 = file_path " " file_size " " file_permissions " " file_date " " file_hash } print }' $sync_log > temp && mv temp $sync_log
             fi
         fi
         # If the file is in $1 and $2 but not in the sync log
@@ -299,16 +321,18 @@ function sync() {
                 awk -v file_path="$file_path" '{ if ($0 !~ "^"file_path) { print } }' $sync_log > temp && mv temp $sync_log
             fi
 
-            # If neither $1 nor $2 files are the same in the sync log but they are the same in $1 and $2
-            # add replace sync log line by the new one
-            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
-                awk -v file_path="$file_path" -v sync_log_file_size="$sync_log_file_size" -v sync_log_file_permissions="$sync_log_file_permissions" -v sync_log_file_date="$sync_log_file_date" -v sync_log_file_hash="$sync_log_file_hash" -v file_size="$file_size" -v file_permissions="$file_permissions" -v file_date="$file_date" -v file_hash="$file_hash" '{ if ($0 ~ "^"file_path) { $0 = file_path " " file_size " " file_permissions " " file_date " " file_hash } print }' $sync_log > temp && mv temp $sync_log
-            fi
-
             # If neither $1 nor $2 files are the same in the sync log but they are not the same in $1 and $2
             # print conflict
             if [[ $file_hash != $sync_log_file_hash && $file2_hash != $sync_log_file_hash && $file_hash != $file2_hash ]]; then
                 echo "Conflict: $file_path is different in $1 and $2"
+                # Summon diff
+                difference $1$file_path $2$file_path
+            fi
+
+            # If neither $1 nor $2 files are the same in the sync log but they are the same in $1 and $2
+            # add replace sync log line by the new one
+            if [[ $file_hash != $sync_log_file_hash && $file_hash == $file2_hash ]]; then
+                awk -v file_path="$file_path" -v sync_log_file_size="$sync_log_file_size" -v sync_log_file_permissions="$sync_log_file_permissions" -v sync_log_file_date="$sync_log_file_date" -v sync_log_file_hash="$sync_log_file_hash" -v file_size="$file_size" -v file_permissions="$file_permissions" -v file_date="$file_date" -v file_hash="$file_hash" '{ if ($0 ~ "^"file_path) { $0 = file_path " " file_size " " file_permissions " " file_date " " file_hash } print }' $sync_log > temp && mv temp $sync_log
             fi
         fi
         # If the file is in $1 and $2 but not in the sync log
@@ -339,8 +363,8 @@ function cleanup() {
         fi
     done < $sync_log
 
-    # Delete duplicate entries in the sync log (keep the recent one)
-    #awk '!seen[$1]++' $sync_log > temp && mv temp $sync_log
+    # Delete duplicate entries in the sync log
+    awk '!seen[$0]++' $sync_log > temp && mv temp $sync_log
 }
 
 # Call main function
