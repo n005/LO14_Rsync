@@ -61,7 +61,7 @@ function main() {
     # Create entry in the sync log for each file in $1 if not exist in $2 (and vice versa)
     # with size of the file, permissions, path, date of last modification, and hash
 
-    for file in $(find $1 -type f); do
+    for file in $(find -L $1 -type f); do
         # Get the path of the file relative to $1
         file_path=${file#$1}
 
@@ -92,7 +92,7 @@ function main() {
     done
 
     # Same for $2
-    for file in $(find $2 -type f); do
+    for file in $(find -L $2 -type f); do
         # Get the path of the file relative to $2
         file_path=${file#$2}
         # Check if the file is already in the sync log or in $1
@@ -154,15 +154,14 @@ function difference() {
     diff -u $1 $2
 
     # Ask which file to keep and check if the answer is correct
-    echo "Answer 1 or 2"
-    read -p "Which file do you want to keep? " answer
-    while [[ $answer != "1" && $answer != "2" ]]; do
-        read -p "Which file do you want to keep? " answer
-    done
-
+reponse=$(zenity --question --text="Conflit détecté:\nChoisissez l'action à effectuer:" \
+               --ok-label="supp fichier de $2" \
+               --cancel-label="supp fichier $1" \
+               --title="Résoudre le Conflit")
+    # Vérifie la réponse de l'utilisateur
+if [ $? -eq 0 ]; then
     current_date=$(date +"%Y-%m-%d %H:%M:%S")
-    # Overwrite the file with the file to keep
-    if [[ $answer == "1" ]]; then
+
         install -D -m $(stat -c %a $1) $1 $2
         # Add the entry to the log_move
         echo "$current_date copy $1 to $2" >> $log_move
@@ -177,7 +176,7 @@ function difference() {
 # Sync function
 function sync() {
     #For loop for $1
-    for file in $(find $1 -type f); do
+    for file in $(find -L $1 -type f); do
         # Get the path of the file relative to $1
         file_path=${file#$1}
         
@@ -260,7 +259,7 @@ function sync() {
     done
 
     # Same for $2
-    for file in $(find $2 -type f); do
+    for file in $(find -L $2 -type f); do
         # Get the path of the file relative to $2
         file_path=${file#$2}
 
