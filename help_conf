@@ -1,0 +1,35 @@
+#! /bin/bash
+function sync() {
+    #For loop for $1
+    for file in $(find $1 -type f); do
+        # Get the path of the file relative to $1
+        file_path=${file#$1}
+
+        # Get the path of the file relative to $2
+        file_path2=${file#$2}
+
+        # Check if the file is not a folder in $2 and print conflict
+        if [[ -d "$2$file_path" ]]; then
+            echo "Conflict: $file_path is a file in $1 and a folder in $2"
+
+
+# Affiche une boîte de dialogue demandant à l'utilisateur de choisir
+reponse=$(zenity --question --text="Conflit détecté:\nChoisissez l'action à effectuer:" \
+               --ok-label="Garder le fichier $file du répertoire $1" \
+               --cancel-label="Garder le dossier $file du répertoire $2" \
+               --title="Résoudre le Conflit")
+# Vérifie la réponse de l'utilisateur
+if [ $? -eq 0 ]; then
+  # Utilisateur a choisi de garder le fichier ABC du répertoire A
+  echo "Vous avez choisi de garder le fichier/dossier $file_path du répertoire $1"
+  # Ajoutez ici le code pour traiter cette option
+  rm -rf  "$2$file_path2"
+else
+  # Utilisateur a choisi de garder le dossier ABC du répertoire B
+  echo "Vous avez choisi de garder le fichier/dossier $file_path du répertoire $2"
+  # Ajoutez ici le code pour traiter cette option
+  rm -rf  "$1$file_path"
+fi
+continue
+        fi
+
