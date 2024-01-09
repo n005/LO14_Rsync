@@ -1,12 +1,6 @@
 #!/bin/bash
 
 function main() {
-    # Check if the number of arguments is correct
-    if [[ $# -ne 2 ]]; then
-        echo "Usage: $0 <dir1> <dir2>"
-        exit 1
-    fi
-
     # Check if the arguments are directories
     if [[ ! -d $1 || ! -d $2 ]]; then
         echo "Error: $1 or $2 is not a directory"
@@ -375,5 +369,10 @@ function cleanup() {
     awk '!seen[$0]++' $sync_log > temp && mv temp $sync_log
 }
 
+# Check if the number of arguments is correct
+if [[ $# -ne 2 ]]; then
+    echo "Usage: $0 <dir1> <dir2>"
+    exit 1
+fi
 # Call main function
 main $1 $2
