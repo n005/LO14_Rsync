@@ -67,7 +67,8 @@ zenity --error --title="Erreur Critique" --text="Error: $2 is empty." --ok-label
 
             # Check if the file is not a folder in $2 and print conflict
             if [[ -d "$2$file_path" ]]; then
-                echo "Conflict: $file_path is a file in $1 and a folder in $2"
+             # Affiche une boîte de dialogue avec trois boutons pour choisir le fichier à su
+                    bash sip $1$file_path $2$file_path
             fi
 
             # Add the entry to the sync log
@@ -102,7 +103,7 @@ zenity --error --title="Erreur Critique" --text="Error: $2 is empty." --ok-label
 
             # Check if the file is not a folder in $1 and print conflict
             if [[ -d "$1$file_path" ]]; then
-                echo "Conflict: $file_path is a file in $2 and a folder in $1"
+                bash sip $1$file_path $2$file_path
             fi
             # Add the entry to the sync log
             echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
@@ -190,7 +191,7 @@ function sync() {
 
         # Check if the file is not a folder in $2 and print conflict
         if [[ -d "$2$file_path" ]]; then
-            echo "Conflict: $file_path is a file in $1 and a folder in $2"
+            bash sip $1$file_path $2$file_path
         fi
         
         # Get the size of the file
@@ -273,7 +274,8 @@ function sync() {
 
         # Check if the file is not a folder in $1 and print conflict
         if [[ -d "$1$file_path" ]]; then
-            echo "Conflict: $file_path is a file in $2 and a folder in $1"
+        bash sip $1$file_path $2$file_path
+
         fi
 
         # Get the size of the file
