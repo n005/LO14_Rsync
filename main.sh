@@ -3,24 +3,28 @@
 function main() {
     # Check if the arguments are directories
     if [[ ! -d $1 || ! -d $2 ]]; then
-        echo "Error: $1 or $2 is not a directory"
-        exit 1
+        
+zenity --error --title="Erreur Critique" --text="Error: $1 or $2 is not a directory." --ok-label="Fermer" --width=300  
+      exit 1
     fi
 
     # Check if the directories are the same
     if [[ $1 -ef $2 ]]; then
-        echo "Error: $1 and $2 are the same directory"
+zenity --error --title="Erreur Critique" --text="Error: $1 or $2 are the same." --ok-label="Fermer" --width=300  
+
         exit 1
     fi
 
     # Check if the directories are empty
     if [[ -z "$(ls -A $1)" ]]; then
-        echo "Error: $1 is empty"
+zenity --error --title="Erreur Critique" --text="Error: $1 is empty." --ok-label="Fermer" --width=300  
+
         exit 1
     fi
 
     if [[ -z "$(ls -A $2)" ]]; then
-        echo "Error: $2 is empty"
+zenity --error --title="Erreur Critique" --text="Error: $2 is empty." --ok-label="Fermer" --width=300  
+
         exit 1
     fi
 
@@ -120,29 +124,39 @@ function main() {
 function difference() {
     # Check if the number of arguments is correct
     if [[ $# -ne 2 ]]; then
-        echo "Usage: $0 <file1> <file2>"
+zenity --error --title="Erreur Critique" --text="Nombre de param incor." --ok-label="Fermer" --width=300  
+  
         exit 1
     fi
 
     # Check if the arguments are files
     if [[ ! -f $1 || ! -f $2 ]]; then
-        echo "Error: $1 or $2 is not a file"
+zenity --error --title="Erreur Critique" --text="Error: $1 or $2 is not a file." --ok-label="Fermer" --width=300  
+        
         exit 1
     fi
 
     # Check if the files are the same
     if [[ $1 -ef $2 ]]; then
-        echo "Error: $1 and $2 are the same file"
+zenity --error --title="Erreur Critique" --text="Error: $1 and $2 are the same file." --ok-label="Fermer" --width=300  
+
         exit 1
     fi
 
     # Check if the files are readable
     if [[ ! -r $1 || ! -r $2 ]]; then
-        echo "Error: $1 or $2 is not readable"
+zenity --error --title="Erreur Critique" --text="Error: $1 or $2 is not readable." --ok-label="Fermer" --width=300  
         exit 1
     fi
+# Affiche une boîte de dialogue avec une question (Oui/Non)
+zenity --question --text="Voulez-vous afficher la difference ?"
 
+# Vérifie la réponse de l'utilisateur
+if [ $? = 0 ]; then
     diff -u $1 $2
+
+fi
+
 
     # Ask which file to keep and check if the answer is correct
 reponse=$(zenity --question --text="Conflit détecté:\nChoisissez l'action à effectuer:" \
@@ -231,7 +245,7 @@ function sync() {
             # If neither $1 nor $2 files are the same in the sync log but they are not the same in $1 and $2
             # print conflict
             if [[ $file_hash != $sync_log_file_hash && $file2_hash != $sync_log_file_hash && $file_hash != $file2_hash ]]; then
-                echo "Conflict: $file_path is different in $1 and $2"
+                #echo "Conflict: $file_path is different in $1 and $2"
                 # Summon diff
                 difference $1$file_path $2$file_path
             fi
@@ -314,7 +328,7 @@ function sync() {
             # If neither $1 nor $2 files are the same in the sync log but they are not the same in $1 and $2
             # print conflict
             if [[ $file_hash != $sync_log_file_hash && $file2_hash != $sync_log_file_hash && $file_hash != $file2_hash ]]; then
-                echo "Conflict: $file_path is different in $1 and $2"
+                #echo "Conflict: $file_path is different in $1 and $2"
                 # Summon diff
                 difference $1$file_path $2$file_path
             fi
@@ -359,19 +373,25 @@ function cleanup() {
 
 # Check if the number of arguments is correct
 if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 <dir1> <dir2>"
+    
+zenity --error --title="Erreur Critique" --text="Nombre de parm incor." --ok-label="Fermer" --width=300
+
     exit 1
 fi
 
 # Check if the directories are readable
 if [[ ! -r $1 || ! -r $2 ]]; then
-    echo "Error: $1 or $2 is not readable"
+    
+zenity --error --title="Erreur Critique" --text="Error: $1 or $2 is not readable." --ok-label="Fermer" --width=300
+
     exit 1
 fi
 
 # Check if the directories are writable
 if [[ ! -w $1 || ! -w $2 ]]; then
-    echo "Error: $1 or $2 is not writable"
+   
+zenity --error --title="Erreur Critique" --text="Error: $1 or $2 is not writable." --ok-label="Fermer" --width=300
+
     exit 1
 fi
 
