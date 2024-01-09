@@ -79,6 +79,11 @@ function main() {
             # Get the hash of the file
             file_hash=$(sha256sum $file | cut -d ' ' -f 1)
 
+            # Check if the file is not a folder in $2 and print conflict
+            if [[ -d "$2$file_path" ]]; then
+                echo "Conflict: $file_path is a file in $1 and a folder in $2"
+            fi
+
             # Add the entry to the sync log
             echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
 
@@ -109,6 +114,10 @@ function main() {
             # Get the hash of the file
             file_hash=$(sha256sum $file | cut -d ' ' -f 1)
 
+            # Check if the file is not a folder in $1 and print conflict
+            if [[ -d "$1$file_path" ]]; then
+                echo "Conflict: $file_path is a file in $2 and a folder in $1"
+            fi
             # Add the entry to the sync log
             echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
 
@@ -187,7 +196,7 @@ function sync() {
         if [[ -d "$2$file_path" ]]; then
             echo "Conflict: $file_path is a file in $1 and a folder in $2"
         fi
-
+        
         # Get the size of the file
         file_size=$(stat -c %s $file)
 
