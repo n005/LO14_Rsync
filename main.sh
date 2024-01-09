@@ -24,18 +24,6 @@ function main() {
         exit 1
     fi
 
-    # Check if the directories are readable
-    if [[ ! -r $1 || ! -r $2 ]]; then
-        echo "Error: $1 or $2 is not readable"
-        exit 1
-    fi
-
-    # Check if the directories are writable
-    if [[ ! -w $1 || ! -w $2 ]]; then
-        echo "Error: $1 or $2 is not writable"
-        exit 1
-    fi
-
     # Create the synchronization log file if it doesn't exist
     sync_log=".sync.log"
     if [[ ! -f $sync_log ]]; then
@@ -374,5 +362,18 @@ if [[ $# -ne 2 ]]; then
     echo "Usage: $0 <dir1> <dir2>"
     exit 1
 fi
+
+# Check if the directories are readable
+if [[ ! -r $1 || ! -r $2 ]]; then
+    echo "Error: $1 or $2 is not readable"
+    exit 1
+fi
+
+# Check if the directories are writable
+if [[ ! -w $1 || ! -w $2 ]]; then
+    echo "Error: $1 or $2 is not writable"
+    exit 1
+fi
+
 # Call main function
 main $1 $2
