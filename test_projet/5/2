@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Définit les options dans une variable
+options=("sync" "journal" "mov_log")
+
+# Affiche une liste avec les options
+choice=$(zenity --list --title="Choisir une option" --column="Options" "${options[@]}" --extra-button="precedent")
+
+# Vérifie si l'utilisateur a annulé la sélection
+#if [ $? -eq 1 ]; then
+ # echo "Opération annulée."
+ # exit 1
+#fi
+
+# Traite le choix de l'utilisateur
+case "$choice" in
+  "sync") 
+        file1=$(zenity --file-selection --title = "select un dossier" --directory) ;
+        file2=$(zenity --file-selection --title = "select un dossier" --directory) ; 
+        bash main.sh $file1 $file2  ;;
+  "journal") 
+    cat .sync.log ;;
+  "mov_log") 
+    cat .mov_log ;;
+
+  "precedent") 
+    bash 1 ;;
+  *)
+    echo "Choix non reconnu."
+    exit 1
+    ;;
+esac

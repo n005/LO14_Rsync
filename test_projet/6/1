@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Affiche une boîte de dialogue avec trois boutons
+reponse=$(zenity --info --text="Choisissez une option:" --extra-button="info" --extra-button="sync" --ok-label="Cancel")
+
+# Vérifie quel bouton a été cliqué
+case "$reponse" in
+  "info")
+    cat info ;;
+  "sync")
+    bash 2
+    ;;  
+esac
