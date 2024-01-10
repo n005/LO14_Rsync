@@ -262,6 +262,14 @@ function sync() {
         if [[ $file_hash == $file2_hash && -z "$(grep -E "^$file_path " $sync_log)" ]]; then
             echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
         fi
+
+        # If the file in $1 are different from the file in $2 and not in the sync log
+        # print conflict
+        if [[ $file_hash != $file2_hash && -z "$(grep -E "^$file_path " $sync_log)" ]]; then
+            #echo "Conflict: $file_path is different in $1 and $2"
+            # Summon diff
+            difference $1$file_path $2$file_path
+        fi
     done
 
     # Same for $2
@@ -345,6 +353,13 @@ function sync() {
         # add the entry to the sync log
         if [[ $file_hash == $file2_hash && -z "$(grep -E "^$file_path " $sync_log)" ]]; then
             echo "$file_path $file_size $file_permissions $file_date $file_hash" >> $sync_log
+        fi
+        # If the file in $1 are different from the file in $2 and not in the sync log
+        # print conflict
+        if [[ $file_hash != $file2_hash && -z "$(grep -E "^$file_path " $sync_log)" ]]; then
+            #echo "Conflict: $file_path is different in $1 and $2"
+            # Summon diff
+            difference $1$file_path $2$file_path
         fi
     done
     
